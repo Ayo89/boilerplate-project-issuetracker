@@ -1,10 +1,7 @@
 "use strict";
 
-
-
-
-
 module.exports = function (app) {
+  const Issue = require("../models/Issue");
 
   app
     .route("/api/issues/:project")
@@ -12,6 +9,13 @@ module.exports = function (app) {
     .get(async function (req, res) {
       let project = req.params.project;
       let query = { project: project };
+
+      if (req.query.open) {
+        query.open = req.query.open === "true";
+      }
+      if (req.query.assigned_to) {
+        query.assigned_to = req.query.assigned_to;
+      }
 
       try {
         const issues = await Issue.find(query);
@@ -38,8 +42,8 @@ module.exports = function (app) {
     })
 
     .put(async function (req, res) {
-      let project = req.params.project;
-      let issueId = req.body._id;
+      let issueId = req.params.project; 
+      console.log(issueId)
       if (!issueId) return res.status(400).send("ID del issue requerido.");
 
       try {
@@ -55,8 +59,7 @@ module.exports = function (app) {
     })
 
     .delete(async function (req, res) {
-      let project = req.params.project;
-      let issueId = req.body._id;
+      let issueId = req.params.project;
       if (!issueId) return res.status(400).send("ID del issue requerido.");
 
       try {

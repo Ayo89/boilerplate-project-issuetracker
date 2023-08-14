@@ -5,6 +5,7 @@ const bodyParser  = require('body-parser');
 const expect      = require('chai').expect;
 const cors        = require('cors');
 require('dotenv').config();
+const mongoose = require("mongoose");
 
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
@@ -46,8 +47,24 @@ app.use(function(req, res, next) {
     .send('Not Found');
 });
 
+
+const connectDB = async ()  => {
+  try {
+    mongoose.connect(process.env.MONGO_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('database connected')
+  } catch (error) {
+    console.log('error connect db')
+  }
+
+
+}
+
 //Start our server and tests!
 const listener = app.listen(process.env.PORT || 3000, function () {
+  connectDB();
   console.log('Your app is listening on port ' + listener.address().port);
   if(process.env.NODE_ENV==='test') {
     console.log('Running Tests...');
