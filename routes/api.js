@@ -6,69 +6,97 @@ module.exports = function (app) {
   app
     .route("/api/issues/:project")
 
+    .post(async function (req, res) {
+      let project = req.params.project;
+
+      if (
+        !req.body.issue_title ||
+        !req.body.issue_text ||
+        !req.body.created_by
+      ) {
+        return res.status(200).json({ error: "required field(s) missing" });
+      }
+
+      try {
+        let newIssue = new Issue({
+          ...req.body,
+          project: project,
+          open: req.body.open || true, // Default value for open
+          created_on: new Date(),
+          updated_on: new Date(),
+          assigned_to: req.body.assigned_to || "", // Ensure assigned_to is present
+          status_text: req.body.status_text || "", // Ensure status_text is present
+        });
+        const savedIssue = await newIssue.save();
+        res.json(savedIssue);
+      } catch (error) {
+        return res.status(200).json({ error: "required field(s) missing" });
+      }
+    })
+
     .get(async function (req, res) {
       let project = req.params.project;
       let query = { project: project };
 
-      if (req.query.open) {
-        query.open = req.query.open === "true";
-      }
-      if (req.query.assigned_to) {
-        query.assigned_to = req.query.assigned_to;
-      }
+      // Copia todas las queries existentes al objeto de consulta
+      Object.keys(req.query).forEach((key) => {
+        if (key === "open") {
+          query.open = req.query.open === "true";
+        } else {
+          query[key] = req.query[key];
+        }
+      });
 
       try {
         const issues = await Issue.find(query);
         return res.json(issues);
       } catch (error) {
         console.error(error);
-        return res.status(500).send("Error al obtener los issues.");
-      }
-    })
-
-    .post(async function (req, res) {
-      let project = req.params.project;
-      try {
-        let newIssue = new Issue({
-          ...req.body,
-          project: project,
-        });
-        const savedIssue = await newIssue.save();
-        res.json(savedIssue);
-      } catch (error) {
-        console.error(error);
-        res.status(500).send("Error al crear el issue.");
+        return res.status(200).send("Error al obtener los issues.");
       }
     })
 
     .put(async function (req, res) {
-      let issueId = req.params.project; 
-      console.log(issueId)
-      if (!issueId) return res.status(400).send("ID del issue requerido.");
+      let issueId = req.body._id;
+
+      if (!issueId) return res.json({ error: "missing _id" });
+
+      const updateData = { ...req.body };
+      delete updateData._id; // Eliminamos _id de la lista de campos a actualizar
+
+      if (Object.keys(updateData).length === 0) {
+        return res.json({ error: "no update field(s) sent", _id: issueId });
+      }
 
       try {
-        let updatedIssue = await Issue.findByIdAndUpdate(issueId, req.body, {
-          new: true,
-        });
-        if (!updatedIssue) return res.status(404).send("Issue no encontrado.");
-        res.json(updatedIssue);
+        let updatedIssue = await Issue.findByIdAndUpdate(
+          issueId,
+          { ...updateData, updated_on: new Date() },
+          {
+            new: true,
+          }
+        );
+        if (!updatedIssue)
+          return res.json({ error: "could not update", _id: issueId });
+        res.json({ result: "successfully updated", _id: issueId });
       } catch (error) {
         console.error(error);
-        res.status(500).send("Error al actualizar el issue.");
+        res.json({ error: "could not update", _id: issueId });
       }
     })
 
     .delete(async function (req, res) {
-      let issueId = req.params.project;
-      if (!issueId) return res.status(400).send("ID del issue requerido.");
+      let issueId = req.body._id;
+      if (!issueId) return res.json({ error: "missing _id" });
 
       try {
         let deletedIssue = await Issue.findByIdAndDelete(issueId);
-        if (!deletedIssue) return res.status(404).send("Issue no encontrado.");
-        res.json({ message: "Issue eliminado exitosamente." });
+        if (!deletedIssue)
+          return res.json({ error: "could not delete", _id: issueId });
+        res.json({ result: "successfully deleted", _id: issueId });
       } catch (error) {
         console.error(error);
-        res.status(500).send("Error al eliminar el issue.");
+        res.json({ error: "could not delete", _id: issueId });
       }
     });
 };
