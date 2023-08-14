@@ -1,27 +1,71 @@
-'use strict';
+"use strict";
+
+
+
+
 
 module.exports = function (app) {
 
-  app.route('/api/issues/:project')
-  
-    .get(function (req, res){
+  app
+    .route("/api/issues/:project")
+
+    .get(async function (req, res) {
       let project = req.params.project;
-      
+      let query = { project: project };
+
+      try {
+        const issues = await Issue.find(query);
+        return res.json(issues);
+      } catch (error) {
+        console.error(error);
+        return res.status(500).send("Error al obtener los issues.");
+      }
     })
-    
-    .post(function (req, res){
+
+    .post(async function (req, res) {
       let project = req.params.project;
-      
+      try {
+        let newIssue = new Issue({
+          ...req.body,
+          project: project,
+        });
+        const savedIssue = await newIssue.save();
+        res.json(savedIssue);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Error al crear el issue.");
+      }
     })
-    
-    .put(function (req, res){
+
+    .put(async function (req, res) {
       let project = req.params.project;
-      
+      let issueId = req.body._id;
+      if (!issueId) return res.status(400).send("ID del issue requerido.");
+
+      try {
+        let updatedIssue = await Issue.findByIdAndUpdate(issueId, req.body, {
+          new: true,
+        });
+        if (!updatedIssue) return res.status(404).send("Issue no encontrado.");
+        res.json(updatedIssue);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Error al actualizar el issue.");
+      }
     })
-    
-    .delete(function (req, res){
+
+    .delete(async function (req, res) {
       let project = req.params.project;
-      
+      let issueId = req.body._id;
+      if (!issueId) return res.status(400).send("ID del issue requerido.");
+
+      try {
+        let deletedIssue = await Issue.findByIdAndDelete(issueId);
+        if (!deletedIssue) return res.status(404).send("Issue no encontrado.");
+        res.json({ message: "Issue eliminado exitosamente." });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send("Error al eliminar el issue.");
+      }
     });
-    
 };
